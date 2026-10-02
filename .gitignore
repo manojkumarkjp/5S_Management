@@ -1,0 +1,16 @@
+node_modules/
+server/uploads/
+server/backups/
+.env
+*.log
+.DS_Store
+test/libs/
+test/out/
+test/shots/
+server/test/out/
+server/test/shots/
+seed/out/
+seed/docs/
+dist/
+shots/
+test/harness.html

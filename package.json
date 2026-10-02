@@ -1,0 +1,15 @@
+{
+  "name": "fives-5s-management",
+  "version": "1.0.0",
+  "private": true,
+  "description": "5S Management System for manufacturing (APU > Zone): web app + REST API + PostgreSQL",
+  "scripts": {
+    "build": "node build.js",
+    "build:server": "node build.js --server",
+    "demo-data": "node seed/seed.js",
+    "server:install": "cd server && npm install",
+    "server:setup": "cd server && npm run setup",
+    "server:start": "cd server && npm start",
+    "server:test": "cd server && npm test"
+  }
+}

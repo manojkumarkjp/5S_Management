@@ -1,0 +1,50 @@
+# docker compose up -d --build        -> http://localhost:3000
+# docker compose --profile https up -d -> automatic HTTPS for SITE_ADDRESS (e.g. 5s.example.com)
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: fives
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-change-me}
+      POSTGRES_DB: fives
+    volumes: [pgdata:/var/lib/postgresql/data]
+    healthcheck: { test: ["CMD-SHELL", "pg_isready -U fives -d fives"], interval: 5s, timeout: 3s, retries: 20 }
+
+  app:
+    build: .
+    restart: unless-stopped
+    depends_on: { db: { condition: service_healthy } }
+    env_file: [.env]
+    environment:
+      DATABASE_URL: postgres://fives:${POSTGRES_PASSWORD:-change-me}@db:5432/fives
+    ports: ["3000:3000"]
+    volumes: [uploads:/data/uploads]
+
+  backup:                      # nightly database + photo backup, kept 30 days
+    image: postgres:16-alpine
+    restart: unless-stopped
+    depends_on: { db: { condition: service_healthy } }
+    environment: { PGPASSWORD: "${POSTGRES_PASSWORD:-change-me}" }
+    volumes: [backups:/backups, uploads:/data/uploads:ro]
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - |
+        while true; do
+          S=$$(date +%Y%m%d-%H%M%S)
+          pg_dump -h db -U fives -Fc fives > /backups/fives-db-$$S.dump && tar -czf /backups/fives-files-$$S.tar.gz -C /data/uploads . && echo "backup $$S ok"
+          find /backups -name 'fives-*' -mtime +30 -delete
+          sleep 86400
+        done
+
+  https:                       # optional TLS reverse proxy (Caddy obtains certificates automatically)
+    profiles: ["https"]
+    image: caddy:2-alpine
+    restart: unless-stopped
+    depends_on: [app]
+    ports: ["80:80", "443:443"]
+    environment: { SITE_ADDRESS: "${SITE_ADDRESS:-:80}" }
+    command: ["sh", "-c", "echo \"$$SITE_ADDRESS { reverse_proxy app:3000 }\" > /etc/caddy/Caddyfile && caddy run --config /etc/caddy/Caddyfile"]
+    volumes: [caddy:/data]
+
+volumes: { pgdata: {}, uploads: {}, backups: {}, caddy: {} }

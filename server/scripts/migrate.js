@@ -1,0 +1,10 @@
+'use strict';
+// Applies db/schema.sql (idempotent).  Usage: npm run migrate
+const fs = require('fs'); const path = require('path');
+const { pool } = require('../src/db');
+(async () => {
+  const sql = fs.readFileSync(path.join(__dirname, '..', 'db', 'schema.sql'), 'utf8');
+  await pool.query(sql);
+  console.log('Schema applied.');
+  await pool.end();
+})().catch((e) => { console.error(e); process.exit(1); });
